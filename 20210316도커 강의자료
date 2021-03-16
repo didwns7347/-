@@ -1,0 +1,255 @@
+.html(apache가 응답)
+.jsp/servlet(tomcat이 응답)
+
+DB이중화(복제:Replication)
+
+apache - tomcat - mysql1
+		- mysql2
+                - mysql3
+                - mysql4
+
+JDBC Driver
+JDBC Replication Driver 
+WAS/Middleware Driver
+
+apache - tomcat - mysql
+apache - tomcat - mysql
+apache - tomcat - mysql
+apache - tomcat - mysql
+
+장애가 안나는 서비스(x)
+장애가 나도 대응이 가능한 서비스(o)
+
+(고)가용성(High Availability:HA)
+
+10중화- 코스콤(HP탠덤)
+4중화 - SK텔레콤
+
+오라클 엑사데이터(서버, 데이터베이스)
+
+만~백 만 대
+
+Scale-Up <<< Scale-Out
+
+Data Center(region) - Multi cloud
+
+cf. CDN(지역이 다른 여러 곳의 서버들의 내용을 동일하게 맞추는 기술)
+    Content Delivery Network
+
+index - RDBMS
+데이터가 아주 많아지면 인덱스가 있어도 느려진다(B-tree의 높이가 높아진다)
+
+파티셔닝 -> 샤딩(Sharding, 물리적으로 시스템분할)
+하나의 테이블 - 여러 개의 파티션으로 분할(내부적으로)
+cf. Active Set
+
+복제(이중화) - 내용은 모두 동일
+  장애대응(HA), 저장용량 동일
+
+샤딩 - 샤드별로 내용이 모두 상이
+  저장용량이 계속 늘릴 수 있슴(Scalable)
+   
+VLDB - 샤딩(파티셔닝)+복제
+복제+샤딩(?)
+
+cf. 재건축(리모델링) - 불편/돈
+
+복제 - Read Scalable(읽기속도)
+샤딩 - Write Scalable(쓰기속도)
+
+동일한 데이터가 여러 개 1,2,3,4 
+ 쓰기 속도는 완만하게 감소
+ 읽기 성능
+   10->20->30->40(read)/10(write)
+
+cf. 네이버 포털(DB복제를 통해 읽기 성능개선)
+  댓글달기가 많아지면?
+
+샤딩
+a-m  -> 1번 서버(샤드)
+n-r  -> 2번 서버(샤드)
+s-z  -> 3번 서버(샤드)
+
+읽기성능 증가되지 않음
+쓰기성능이 증가(잘 구성하면 병렬쓰기가 가능)
+
+cf. 게임
+
+읽기+쓰기가 빨라야 된다면?
+
+1. 먼저 샤딩 적용(쓰기속도 개선/데이터저장용량 개선)
+2. 개별 샤드를 복제(읽기속도 개선+고가용성)
+
+샤딩->복제
+
+1. Javascript 2. CSS
+
+HTML5 Canvas vs SVG(Scalable Vector Graphic)
+
+복제
+1.Master --> Slave (단방향)
+  쓰기는 마스터에, 읽기는 슬레이브에서
+  마스터는 1개, 슬레이브는 N대
+
+2.Master <-> Master (쌍방향)
+  cf. 블럭체인계열
+
+MySQL 복제드라이버(Replication Driver)
+
+Connection conn = driver.connect("jdbc:mysql:replication://master,slave1,slave2,slave3/test", props);
+
+master에 쓰기, slave 1/2/3(단순 로드밸런싱)에서 읽기
+
+슬레이브 DB + Nginx/Apache/Tomcat 설치 -> Read
+마스터 DB + Nginx/Apache/Tomcat 설치   -> Write
+
+마스터의 역할 
+  1. write(INSERT/UPDATE/DELETE)
+  2. slave쪽으로 데이터 전파(8~10이상, 다단구성/relay)
+               
+MySQL 로그
+  1. General Log
+  2. Error Log
+  3. Slow query Log
+--------------------
+  4. Binary Log(마스터/Binary 포맷)
+  5. Relay Log(슬레이브)
+  6. Audit Log(EnterpriseAudit)
+
+Binary Log(마스터) -> Relay Log(슬레이브) -> 슬레이브 DB에 반영
+
+IO Thread(relay log를 만드는 쓰레드)
+SQL Thread(slave DB에 반영시키는 쓰레드)
+
+Binlog Format
+1. Statement(5.7이전)
+2. Row(5.7이후)
+3. Mixed
+
+Statement-based Replication
+  Master(insert) -> Slave(insert)
+  
+Row-based Replication(Recommended)
+  cf. Timer/난수/Unique
+  쿼리실행 후 변경/추가/삭제된 레코드를 전송
+  -> 압축,...
+
+Mixed
+
+Lock(Synchnization) - 수 십 개의 락(테이블락/레코드락/글로벌락/AI락)
+
+비동기(Asynchronous) 복제
+반동기(semi-synchronouse) 복제
+동기 (synchronous) 복제
+
+마스터 1 - 슬레이브 N
+
+insert -> insert
+
+1. 비동기복제(MySQL 기본복제)
+   마스터에 반영후 -> 슬레이브 전송(반영여부를 확인하지 않음)
+
+2. 반동기복제(MySQL서 플러그인 설치)
+   최소한 슬레이브 중 하나이상 업데이트를 확인
+
+3. 동기복제(Gallera Cluster/오라클 RAC)
+   마스터 -> 슬레이브 전송 후 모든 슬레이브 업데이트여부까지 확인한 후 커밋
+
+비동기실행
+  자바스크립트(파일로딩-> 실행)
+   Node.js
+
+Spring Asynchronous / Java
+
+네트워크 
+  동기/비동기 
+  동기식 3G(CDMA)/비동기식(CDMA) 3G
+
+  CDMA2000(동기식) / WCDMA(유럽식)-> LTE
+  cf. A(ssisted)-GPS
+
+  GPS(세계표준시각)-NMEA -> GPS모뎀(세계표준시간) 400만원
+
+  기지국마다 GPS시간으로 동기화 -> "동기식 CDMA" 
+  NTP+delay 스타일 -> 비동기식 CDMA
+
+  동기식 시스템(클럭을 동일하게) -> PC/Notebook
+  비동기식 시스템(클럭을 별도로) -> 네트워크/인터넷
+
+SW 동기/비동기
+
+동기(Blocking)
+   함수 호출 후 리턴될 때가지 대기(wait/blocking)-> 죽을 확률이 높아짐, 성능
+   블럭킹 풀린 후 다음 라인(코드)실행
+
+Non-Blocking
+
+비동기(Asynchronous)
+   호출 후 리턴될 때까지 기다리지 않음
+
+I/O(디스크,네트워크)는 신뢰도가 낮음->비동기가 발달
+  프로그래밍의 비동기목적 -> 속도가 좋아짐
+
+https://jupiny.com/2017/11/07/docker-mysql-replicaiton/
+
+mysqld(daemon:server)
+
+docker run --name mysql-master -v C:\Users\BIT_R34\Desktop\master:/etc/mysql/conf.d -e MYSQL_ROOT_PASSWORD=masterpw -d mysql:5.7 
+
+$ docker exec -it mysql-master bash
+# cd /etc/mysql/conf.d
+# ls
+# cat config_file.cnf
+# chmod 644 config_file.cnf
+# mysql -uroot -p
+
+docker run --name mysql-slave -v C:\Users\BIT_R34\Desktop\slave:/etc/mysql/conf.d --link mysql-master -e MYSQL_ROOT_PASSWORD=slavepw -d mysql:5.7
+
+mysql-master 
+SHOW MASTER STATUS\G  
+   File: mysql-bin.000003
+         Position: 154
+
+CREATE USER 'repluser'@'%' IDENTIFIED BY 'replpw'; 
+GRANT REPLICATION SLAVE ON *.* TO 'repluser'@'%';  
+
+mysql-slave
+CHANGE MASTER TO MASTER_HOST='172.17.0.2', MASTER_USER='repluser', MASTER_PASSWORD='replpw', MASTER_LOG_FILE='mysql-bin.000003', MASTER_LOG_POS=154;  
+mysql> START SLAVE;  
+mysql> show slave status\G -> Yes/Yes 확인
+
+$ docker inspect mysql-master 
+
+docker run --name some-mysql \
+-p 3306:3306 \
+-e MYSQL_ROOT_PASSWORD=my-secret-pw \
+-d mysql \
+--default-authentication-plugin=mysql_native_password
+
+[mysqld] default-authentication-plugin=mysql_native_password
+
+$ docker rm -f mysql-master
+$ docker rm -f mysql-slave
+
+launchpad.net/test-db -> master 기록/ slave 확인
+
+$ docker exec -it mysql-master bash
+# apt update
+# apt install wget
+# apt install bzip2
+# wget https://launchpad.net/test-db/employees-db-1/1.0.6/+download/employees_db-full-1.0.6.tar.bz2
+# bzip2 -d employees_db-full-1.0.6.tar.bz2
+# tar xvf employees_db-full-1.0.6.tar
+# cd employees_db
+# mysql -uroot -p
+mysql> source employees.sql
+
+$ docker exec -it mysql-slave bash
+# mysql -uroot -p
+# show databases -> employees db가 생성되었는지 확인
+
+mysql> show variables like '%binlog%';
+
+
+
+
