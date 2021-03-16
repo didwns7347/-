@@ -1,0 +1,197 @@
+MYSQL( master DB - slave DB  복제 실습하기 use docker)
+
+1. 바탕화면에 slave , master 빈 폴더 생성
+1) 마스터
+C:\Users\MyCom\Desktop\master
+[mysqld]
+log-bin=mysql-bin  
+server-id=1  
+config_file.cnf (저장)
+2)슬레이브
+C:\Users\MyCom\Desktop\slave
+[mysqld]
+server-id=2 
+config_file.cnf (저장)
+2. cmd 도커 마스터 환경설정
+$ docker run --name mysql-master -v 
+C:\Users\MyCom\Desktop\master:/etc/mysql/conf.d -e 
+MYSQL_ROOT_PASSWORD=masterpw -d mysql:5.7
+
+$ docker exec -it mysql-master bash
+
+# cd /etc/mysql/conf.d
+# cat config_file.cnf     파일 확인하기
+# chmod 644 config_file.cnf  ch모드 변경
+# mysql -u root -p
+Enter password: masterpw        mysql 실행
+
+mysql> CREATE USER 'repluser'@'%' IDENTIFIED BY 'replpw';
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> GRANT REPLICATION SLAVE ON *.* TO 'repluser'@'%';
+Query OK, 0 rows affected (0.00 sec)
+mysql> show master status;
++------------------+----------+--------------+------------------+-------------------+
+| File             | Position | Binlog_Do_DB | Binlog_Ignore_DB | Executed_Gtid_Set |
++------------------+----------+--------------+------------------+-------------------+
+| mysql-bin.000003 |      603 |              |                  |                   |
++------------------+----------+--------------+------------------+-------------------+
+1 row in set (0.00 sec)
+파일 이름 과 포지션 내용 확인 
+
+
+
+
+
+
+3. Slave 환경설정
+CHANGE MASTER TO MASTER_HOST='mysql-master', 
+MASTER_USER='repluser', MASTER_PASSWORD='replpw', 
+MASTER_LOG_FILE='mysql-bin.000003', MASTER_LOG_POS=603;
+                             "파일이름"                                 "포지션"
+mysql> START SLAVE;  
+mysql> show slave status \G;
+*************************** 1. row ***************************
+               Slave_IO_State: Waiting for master to send event
+                  Master_Host: mysql-master
+                  Master_User: repluser
+                  Master_Port: 3306
+                Connect_Retry: 60
+              Master_Log_File: mysql-bin.000003
+          Read_Master_Log_Pos: 603
+               Relay_Log_File: 0d25d44c3cc2-relay-bin.000002
+                Relay_Log_Pos: 320
+        Relay_Master_Log_File: mysql-bin.000003
+             Slave_IO_Running: Yes                    =>
+            Slave_SQL_Running: Yes                   => 두개가 YES로 나오면 성공임
+
+
+
+4. 셈플디비로 잘되나 확인하기(launchpad.net/test-db -> master 기록/ slave 확인)
+cmd 마스터에 외부파일로 디비생성
+$ docker exec -it mysql-master bash
+# apt update
+# apt install wget
+# apt install bzip2
+# wget https://launchpad.net/test-db/employees-db-1/1.0.6/+download/employees_db-full-1.0.6.tar.bz2
+# bzip2 -d employees_db-full-1.0.6.tar.bz2
+# tar xvf employees_db-full-1.0.6.tar
+# cd employees_db
+# mysql -uroot -p
+mysql> source employees.sql
+
+mysql> use employees;
+Database changed
+
+
+mysql> show tables;
++---------------------+
+| Tables_in_employees |
++---------------------+
+| departments         |
+| dept_emp            |
+| dept_manager        |
+| employees           |
+| salaries            |
+| titles              |
++---------------------+
+
+
+cmd 슬레이브에서 내용확인해보기
+$ docker exec -it mysql-slave bash
+# mysql -uroot -p
+# show databases -> employees 
+
+
+mysql> show databases;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| employees          |
+| mysql              |
+| performance_schema |
+| sys                |
++--------------------+
+5 rows in set (0.01 sec)
+
+mysql> use employees;
+Reading table information for completion of table and column names
+You can turn off this feature to get a quicker startup with -A
+
+Database changed
+mysql> show tables;
++---------------------+
+| Tables_in_employees |
++---------------------+
+| departments         |
+| dept_emp            |
+| dept_manager        |
+| employees           |
+| salaries            |
+| titles              |
++---------------------+
+6 rows in set (0.00 sec)
+
+
+5. master DB에서 테이블 변경이 slave 에도 적용되나 확인해 보자
+
+MASTER cmd 창
+mysql> select * from employees limit 10;
++--------+------------+------------+-----------+--------+------------+
+| emp_no | birth_date | first_name | last_name | gender | hire_date  |
++--------+------------+------------+-----------+--------+------------+
+|  10001 | 1953-09-02 | Georgi     | Facello   | M      | 1986-06-26 |
+|  10002 | 1964-06-02 | Bezalel    | Simmel    | F      | 1985-11-21 |
+|  10003 | 1959-12-03 | Parto      | Bamford   | M      | 1986-08-28 |
+|  10004 | 1954-05-01 | Chirstian  | Koblick   | M      | 1986-12-01 |
+|  10005 | 1955-01-21 | Kyoichi    | Maliniak  | M      | 1989-09-12 |
+|  10006 | 1953-04-20 | Anneke     | Preusig   | F      | 1989-06-02 |
+|  10007 | 1957-05-23 | Tzvetan    | Zielinski | F      | 1989-02-10 |
+|  10008 | 1958-02-19 | Saniya     | Kalloufi  | M      | 1994-09-15 |
+|  10009 | 1952-04-19 | Sumant     | Peac      | F      | 1985-02-18 |
+|  10010 | 1963-06-01 | Duangkaew  | Piveteau  | F      | 1989-08-24 |
++--------+------------+------------+-----------+--------+------------+
+10 rows in set (0.00 sec)
+
+mysql> insert into employees values(1,'200-01-01','ha','suckjae','M','2020-01-01');  테이블 원소 추가
+
+Query OK, 1 row affected (0.01 sec)
+
+mysql> select * from employees limit 10;
++--------+------------+------------+-----------+--------+------------+
+| emp_no | birth_date | first_name | last_name | gender | hire_date  |
++--------+------------+------------+-----------+--------+------------+
+|      1 | 0200-01-01 | ha         | suckjae   | M      | 2020-01-01 |
+|  10001 | 1953-09-02 | Georgi     | Facello   | M      | 1986-06-26 |
+|  10002 | 1964-06-02 | Bezalel    | Simmel    | F      | 1985-11-21 |
+|  10003 | 1959-12-03 | Parto      | Bamford   | M      | 1986-08-28 |
+|  10004 | 1954-05-01 | Chirstian  | Koblick   | M      | 1986-12-01 |
+|  10005 | 1955-01-21 | Kyoichi    | Maliniak  | M      | 1989-09-12 |
+|  10006 | 1953-04-20 | Anneke     | Preusig   | F      | 1989-06-02 |
+|  10007 | 1957-05-23 | Tzvetan    | Zielinski | F      | 1989-02-10 |
+|  10008 | 1958-02-19 | Saniya     | Kalloufi  | M      | 1994-09-15 |
+|  10009 | 1952-04-19 | Sumant     | Peac      | F      | 1985-02-18 |
++--------+------------+------------+-----------+--------+------------+
+
+
+
+
+Slave CMD 창
+mysql> select * from employees limit 10;
++--------+------------+------------+-----------+--------+------------+
+| emp_no | birth_date | first_name | last_name | gender | hire_date  |
++--------+------------+------------+-----------+--------+------------+
+|      1 | 0200-01-01 | ha         | suckjae   | M      | 2020-01-01 |
+|  10001 | 1953-09-02 | Georgi     | Facello   | M      | 1986-06-26 |
+|  10002 | 1964-06-02 | Bezalel    | Simmel    | F      | 1985-11-21 |
+|  10003 | 1959-12-03 | Parto      | Bamford   | M      | 1986-08-28 |
+|  10004 | 1954-05-01 | Chirstian  | Koblick   | M      | 1986-12-01 |
+|  10005 | 1955-01-21 | Kyoichi    | Maliniak  | M      | 1989-09-12 |
+|  10006 | 1953-04-20 | Anneke     | Preusig   | F      | 1989-06-02 |
+|  10007 | 1957-05-23 | Tzvetan    | Zielinski | F      | 1989-02-10 |
+|  10008 | 1958-02-19 | Saniya     | Kalloufi  | M      | 1994-09-15 |
+|  10009 | 1952-04-19 | Sumant     | Peac      | F      | 1985-02-18 |
++--------+------------+------------+-----------+--------+------------+
+10 rows in set (0.00 sec)\
+마스터에서의 변화가 slave 에도 적용됨
